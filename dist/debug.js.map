@@ -1,1 +1,0 @@
-{"version":3,"sources":["debug.js"],"names":[],"mappings":";;;;;;;;;;;;kBAEe;MAAC,IAAI,yDAAG,aAAa;SAAK,0CAAyB,IAAI,CAAG;CAAA","file":"debug.js","sourcesContent":["import debug from 'debug';\n\nexport default (name = 'soft-delete') => debug(`loopback:mixins:${name}`);\n"],"sourceRoot":"/Users/gausie/Projects/loopback-ds-timestamp-mixin/es6"}
