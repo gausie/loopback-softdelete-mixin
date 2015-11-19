@@ -1,0 +1,7 @@
+{
+  "extends": "airbnb/base",
+  "ecmaFeatures": {
+    "restParams": true,
+    "experimentalObjectRestSpread": true
+  }
+}
