@@ -7,64 +7,63 @@ export default (Model, { deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scr
   debug('options', { deletedAt, _isDeleted, scrub });
 
   const properties = Model.definition.properties;
-  const scrubbed = scrub ?
-    Object.keys(properties)
-      .filter(prop => !properties[prop].id && prop !== _isDeleted)
-      .reduce((obj, prop) => ({ ...obj, [prop]: null }), {})
-    : {};
 
-  Model.defineProperty(deletedAt, {type: Date, required: false, default: undefined});
-  Model.defineProperty(_isDeleted, {type: Boolean, required: true, default: false});
+  let scrubbed = {};
+  if (scrub !== false) {
+    let propertiesToScrub = scrub;
+    if (!Array.isArray(propertiesToScrub)) {
+      propertiesToScrub = Object.keys(properties)
+        .filter(prop => !properties[prop].id && prop !== _isDeleted);
+    }
+    scrubbed = propertiesToScrub.reduce((obj, prop) => ({ ...obj, [prop]: null }), {});
+  }
+
+  Model.defineProperty(deletedAt, {type: Date, required: false});
+  Model.defineProperty(_isDeleted, {required: true, default: false});
 
   Model.destroyAll = function softDestroyAll(where, cb) {
-    const defaultScope = Model.defaultScope;
-    Model.defaultScope = () => {};
-
-    return Model.updateAll(where, { ...scrubbed, [deletedAt]: new Date(), [_isDeleted]: true }).then(result => {
-      Model.defaultScope = defaultScope;
-      if (cb) return cb(null, result);
-      return Promise.resolve(result);
-    }).catch(error => cb(error));
+    return Model.updateAll(where, { ...scrubbed, [deletedAt]: new Date(), [_isDeleted]: true })
+      .then(result => (typeof cb === 'function') ? cb(null, result) : result)
+      .catch(error => (typeof cb === 'function') ? cb(error) : Promise.reject(error));
   };
 
   Model.remove = Model.destroyAll;
   Model.deleteAll = Model.destroyAll;
 
   Model.destroyById = function softDestroyById(id, cb) {
-    const defaultScope = Model.defaultScope;
-    Model.defaultScope = () => {};
-
-    return Model.updateAll({ id: id }, { ...scrubbed, [deletedAt]: new Date(), [_isDeleted]: true }).then(result => {
-      Model.defaultScope = defaultScope;
-      if (cb) return cb(null, result);
-      return Promise.resolve(result);
-    }).catch(error => cb(error));
+    return Model.updateAll({ id: id }, { ...scrubbed, [deletedAt]: new Date(), [_isDeleted]: true })
+      .then(result => (typeof cb === 'function') ? cb(null, result) : result)
+      .catch(error => (typeof cb === 'function') ? cb(error) : Promise.reject(error));
   };
 
   Model.removeById = Model.destroyById;
   Model.deleteById = Model.destroyById;
 
-  Model.prototype.destroy = function softDestroy(cb) {
-    const defaultScope = Model.defaultScope;
-    Model.defaultScope = () => {};
+  Model.prototype.destroy = function softDestroy(options, cb) {
+    const callback = (cb === undefined && typeof options === 'function') ? options : cb;
 
-    return this.updateAttributes({ ...scrubbed, [deletedAt]: new Date(), [_isDeleted]: true }).then(result => {
-      Model.defaultScope = defaultScope;
-      if (cb) return cb(null, result);
-      return Promise.resolve(result);
-    }).catch(error => cb(error));
+    return this.updateAttributes({ ...scrubbed, [deletedAt]: new Date(), [_isDeleted]: true })
+      .then(result => (typeof cb === 'function') ? callback(null, result) : result)
+      .catch(error => (typeof cb === 'function') ? callback(error) : Promise.reject(error));
   };
 
   Model.prototype.remove = Model.prototype.destroy;
   Model.prototype.delete = Model.prototype.destroy;
 
   // Emulate default scope but with more flexibility.
+  const queryNonDeleted = {
+    or: [
+      { [_isDeleted]: { exists: false } },
+      { [_isDeleted]: false },
+    ],
+  };
+
   const _findOrCreate = Model.findOrCreate;
   Model.findOrCreate = function findOrCreateDeleted(query = {}, ...rest) {
     if (!query.where) query.where = {};
 
     if (!query.deleted) {
-      query.where[_isDeleted] = false;
+      query.where = { and: [ query.where, queryNonDeleted ] };
     }
 
     return _findOrCreate.call(Model, query, ...rest);
@@ -75,7 +74,7 @@ export default (Model, { deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scr
     if (!query.where) query.where = {};
 
     if (!query.deleted) {
-      query.where[_isDeleted] = false;
+      query.where = { and: [ query.where, queryNonDeleted ] };
     }
 
     return _find.call(Model, query, ...rest);
@@ -84,14 +83,14 @@ export default (Model, { deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scr
   const _count = Model.count;
   Model.count = function countDeleted(where = {}, ...rest) {
     // Because count only receives a 'where', there's nowhere to ask for the deleted entities.
-    where[_isDeleted] = false;
-    return _count.call(Model, where, ...rest);
+    const whereNotDeleted = { and: [ where, queryNonDeleted ] };
+    return _count.call(Model, whereNotDeleted, ...rest);
   };
 
   const _update = Model.update;
   Model.update = Model.updateAll = function updateDeleted(where = {}, ...rest) {
     // Because update/updateAll only receives a 'where', there's nowhere to ask for the deleted entities.
-    where[_isDeleted] = false;
-    return _update.call(Model, where, ...rest);
+    const whereNotDeleted = { and: [ where, queryNonDeleted ] };
+    return _update.call(Model, whereNotDeleted, ...rest);
   };
 };
