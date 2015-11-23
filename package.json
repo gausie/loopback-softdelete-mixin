@@ -1,6 +1,6 @@
 {
   "name": "loopback-softdelete-mixin",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A mixin to automatically generate created and updated Date attributes for loopback Models",
   "main": "dist/index.js",
   "scripts": {
