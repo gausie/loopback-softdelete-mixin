@@ -1,4 +1,7 @@
 node_modules/
 coverage/
-dist/
 npm-debug.log
+
+/debug.js
+/index.js
+/soft-delete.js
