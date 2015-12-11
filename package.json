@@ -23,6 +23,7 @@
     "url": "https://github.com/gausie/loopback-softdelete-mixin.git"
   },
   "dependencies": {
+    "babel-runtime": "^6.3.13",
     "debug": "2.x"
   },
   "peerDependencies": {
