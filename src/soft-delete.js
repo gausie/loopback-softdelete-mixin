@@ -55,10 +55,12 @@ export default (Model, { deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scr
 
   const _findOrCreate = Model.findOrCreate;
   Model.findOrCreate = function findOrCreateDeleted(query = {}, ...rest) {
-    if (!query.where) query.where = {};
-
     if (!query.deleted) {
-      query.where = { and: [ query.where, queryNonDeleted ] };
+      if (!query.where) {
+        query.where = queryNonDeleted;
+      } else {
+        query.where = { and: [ query.where, queryNonDeleted ] };
+      }
     }
 
     return _findOrCreate.call(Model, query, ...rest);
@@ -67,7 +69,11 @@ export default (Model, { deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scr
   const _find = Model.find;
   Model.find = function findDeleted(query = {}, ...rest) {
     if (!query.deleted) {
-      query.where = { and: [ query.where, queryNonDeleted ] };
+      if (!query.where) {
+        query.where = queryNonDeleted;
+      } else {
+        query.where = { and: [ query.where, queryNonDeleted ] };
+      }
     }
 
     return _find.call(Model, query, ...rest);
