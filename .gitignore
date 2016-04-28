@@ -2,6 +2,7 @@ node_modules/
 coverage/
 npm-debug.log
 
+/.idea/
 /debug.js
 /index.js
 /soft-delete.js

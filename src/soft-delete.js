@@ -19,7 +19,7 @@ export default (Model, { deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scr
   }
 
   Model.defineProperty(deletedAt, {type: Date, required: false});
-  Model.defineProperty(_isDeleted, {required: true, default: false});
+  Model.defineProperty(_isDeleted, {type: Boolean, required: true, default: false});
 
   Model.destroyAll = function softDestroyAll(where, cb) {
     return Model.updateAll(where, { ...scrubbed, [deletedAt]: new Date(), [_isDeleted]: true })
@@ -51,19 +51,16 @@ export default (Model, { deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scr
   Model.prototype.delete = Model.prototype.destroy;
 
   // Emulate default scope but with more flexibility.
-  const queryNonDeleted = {
-    or: [
-      { [_isDeleted]: { exists: false } },
-      { [_isDeleted]: false },
-    ],
-  };
+  const queryNonDeleted = {_isDeleted: false};
 
   const _findOrCreate = Model.findOrCreate;
   Model.findOrCreate = function findOrCreateDeleted(query = {}, ...rest) {
-    if (!query.where) query.where = {};
-
     if (!query.deleted) {
-      query.where = { and: [ query.where, queryNonDeleted ] };
+      if (!query.where) {
+        query.where = queryNonDeleted;
+      } else {
+        query.where = { and: [ query.where, queryNonDeleted ] };
+      }
     }
 
     return _findOrCreate.call(Model, query, ...rest);
@@ -71,10 +68,12 @@ export default (Model, { deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scr
 
   const _find = Model.find;
   Model.find = function findDeleted(query = {}, ...rest) {
-    if (!query.where) query.where = {};
-
     if (!query.deleted) {
-      query.where = { and: [ query.where, queryNonDeleted ] };
+      if (!query.where) {
+        query.where = queryNonDeleted;
+      } else {
+        query.where = { and: [ query.where, queryNonDeleted ] };
+      }
     }
 
     return _find.call(Model, query, ...rest);
